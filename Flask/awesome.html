@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WR First Round Draft Pick Predictor</title>
+    <link rel="stylesheet" href="static/d3.slider.css" />
+    <style>
+
+     body {
+       font-family: Tahoma, Verdana, Segoe, sans-serif;
+     }
+
+     h2 {
+       font-size: 1.2em;
+       margin: 40px 0 5px 0;
+       color: gray
+     }
+
+     .space {
+       margin-bottom: 20 px;
+     }
+
+     .wrapper {
+       width: 800px;
+       margin-left: auto;
+       margin-right: auto;
+       margin-bottom: 0px;
+     }
+
+     #bar_chart {
+       margin-bottom: 0 px;
+     }
+
+     .bar {
+       fill: #0C371D;
+     }
+
+     span {
+       color: steelblue;
+     }
+
+    </style>
+  </head>
+
+  <body>
+
+	
+    <div id="chart_area" class="wrapper">
+      <h2>WR Chance Of Being a First Round Draft Pick</h2>
+      <p class="space"></p>
+      <div id="bar_chart">
+      </div>
+    </div>
+
+    <div id="sliders" class="wrapper">
+
+      <h2 class="feature">Forty yard Dash Time: <span id="forty">4.5</span></h2>
+      <div id="forty_slider"></div>
+
+      <h2 class="feature">Vertical Leap (in inches): <span id="vert">30.0</span></h2>
+      <div id="vertical_slider"></div>
+      
+      <h2 class="feature">Career Receptions: <span id="car_rec">50</span></h2>
+      <div id="recs_slider"></div>
+      
+      <h2 class="feature">Career Reception Yardage: <span id="car_rec_yd">1000</span></h2>
+      <div id="rec_yd_slider"></div>
+      
+      <h2 class="feature">Career Reception Touchdowns:<span id="car_rec_td">10</span></h2>
+      <div id="rec_td_slider"></div>
+    </div>
+
+    <!-- Import the libraries: jQuery, d3, d3.slider -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="static/d3.slider.js"></script>
+
+    <script>
+
+     <!-- SINGLE BAR CHART -->
+
+     var forty_time = 4.5;
+     var vertical = 30.0;
+     var current_recs=50;
+     var current_rec_yd=1000;
+     var current_rec_td=10;
+     var current_chance = 55.4;
+
+     var chart = d3.select("#bar_chart")
+                   .append("svg:svg")
+                   .attr("width", 800)
+                   .attr("height", 60);
+
+     var chance_scale = d3.scale.linear()
+                                .domain([0, 100])
+                                .range([0, 800]);
+
+     var bar = chart.append("g")
+                    .attr("class", "bar")
+
+       bar.append("svg:rect")
+          .attr("id", "chancebar")
+          .attr("class", "bar")
+          .attr("width", chance_scale(current_chance))
+          .attr("height", 50);
+
+     bar.append("text")
+        .attr("id", "percent_text")
+        .attr("dy", ".75em")
+        .attr("y", 15)
+        .attr("x", chance_scale(current_chance-5))
+        .attr("text-anchor", "middle")
+        .attr("fill", "white")
+        .attr("font-size", 20)
+        .text( current_chance.toFixed(1) + "%");
+
+
+     <!-- FUNCTION TO GET CHANCE FROM YOUR PREDICTOR WITH AJAX AND CHANGE BAR  HEIGHT -->
+     function getAndDrawChance(forty, vert, car_rec, car_rec_yd, car_rec_td){
+
+       $.ajax({
+         type: "POST",
+         contentType: "application/json; charset=utf-8",
+         url: "/score",
+         dataType: "json",
+         async: true,
+         data: "{\"example\": ["+forty+","+vert+","+car_rec+","+car_rec_yd+","+car_rec_td+"]}",
+         success: function (data) {
+           var chance = 100 * data["score"];
+           d3.select("#chancebar")
+             .attr("width", chance_scale(chance));
+           d3.select("#percent_text")
+             .attr("x", chance_scale(chance-5))
+             .text(chance.toFixed(1) + "%");
+         },
+         error: function (result) {
+         }
+       })
+     }
+
+
+     <!-- SLIDERS -->
+
+     d3.select('#forty_slider')
+       .call(
+         d3.slider()
+           .value(forty_time)
+           .min(4)
+           .max(5)
+           .step(.05)
+           .axis(true)
+           .on("slide", function(evt,value) {
+             d3.select('#forty').text(value);
+             forty_time = value;
+             getAndDrawChance(forty_time, vertical, current_recs, current_rec_yd, current_rec_td)
+           }
+           )
+       );
+       
+     d3.select('#vertical_slider')
+       .call(
+         d3.slider()
+           .value(vertical)
+           .min(24)
+           .max(50)
+           .step(1)
+           .axis(true)
+           .on("slide", function(evt,value) {
+             d3.select('#vert').text(value);
+             vertical = value;
+             getAndDrawChance(forty_time, vertical, current_recs, current_rec_yd, current_rec_td)
+           }
+           )
+       );
+       
+     d3.select('#recs_slider')
+       .call(
+         d3.slider()
+           .value(current_recs)
+           .min(0)
+           .max(400)
+           .step(1)
+           .axis(true)
+           .on("slide", function(evt,value) {
+             d3.select('#car_rec').text(value);
+             current_recs = value;
+             getAndDrawChance(forty_time, vertical, current_recs, current_rec_yd, current_rec_td)
+           }
+           )
+       );
+       
+     d3.select('#rec_yd_slider')
+       .call(
+         d3.slider()
+           .value(current_rec_yd)
+           .min(0)
+           .max(6000)
+           .step(1)
+           .axis(true)
+           .on("slide", function(evt,value) {
+             d3.select('#car_rec_yd').text(value);
+             current_rec_yd = value;
+             getAndDrawChance(forty_time, vertical, current_recs, current_rec_yd, current_rec_td)
+           }
+           )
+       );
+       
+        d3.select('#rec_td_slider')
+       .call(
+         d3.slider()
+           .value(current_rec_td)
+           .min(0)
+           .max(60)
+           .step(1)
+           .axis(true)
+           .on("slide", function(evt,value) {
+             d3.select('#car_rec_td').text(value);
+             current_rec_td = value;
+             getAndDrawChance(forty_time, vertical, current_recs, current_rec_yd, current_rec_td)
+           }
+           )
+       );
+    </script>
+  </body>
+</html>
